@@ -1,0 +1,653 @@
+<!DOCTYPE html>
+<html lang="id">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>GACOR HUNTER V5.0 - Structured Trading Engine</title>
+    <style>
+        @import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;600;800&family=JetBrains+Mono:wght@400;700&display=swap');
+
+        :root { 
+            --bg-base: #030712; 
+            --bg-grad: radial-gradient(circle at top, #0f172a, #030712);
+            --panel: rgba(15, 23, 42, 0.7); 
+            --panel-border: rgba(56, 189, 248, 0.2); 
+            --text: #f8fafc; 
+            --accent: #38bdf8; 
+            --accent-glow: rgba(56, 189, 248, 0.6);
+            --accent-grad: linear-gradient(135deg, #0ea5e9, #38bdf8);
+            --buy: #10b981; --buy-glow: rgba(16, 185, 129, 0.4);
+            --wait: #f59e0b; 
+            --skip: #f43f5e; --skip-glow: rgba(244, 63, 94, 0.4);
+        }
+
+        * { box-sizing: border-box; scroll-behavior: smooth; }
+        body { 
+            font-family: 'Inter', sans-serif; 
+            background: var(--bg-base); background-image: var(--bg-grad); 
+            color: var(--text); margin: 0; padding: 20px 15px; min-height: 100vh;
+        }
+        
+        .container { max-width: 1050px; margin: auto; }
+        
+        h1 { 
+            text-align: center; font-size: 32px; font-weight: 800; text-transform: uppercase; 
+            letter-spacing: 2px; margin-bottom: 5px; 
+            background: var(--accent-grad); -webkit-background-clip: text; -webkit-text-fill-color: transparent;
+            filter: drop-shadow(0 0 10px var(--accent-glow));
+        }
+        p.subtitle { text-align: center; color: #94a3b8; font-family: 'JetBrains Mono', monospace; font-size: 11px; margin-bottom: 20px; letter-spacing: 2px; text-transform: uppercase; }
+
+        .user-stats-container {
+            display: flex; justify-content: center; gap: 15px; margin-bottom: 30px;
+            font-family: 'JetBrains Mono', monospace; font-size: 12px; flex-wrap: wrap;
+        }
+        .stat-badge {
+            background: rgba(3, 7, 18, 0.6); border: 1px solid #334155;
+            padding: 8px 16px; border-radius: 8px; display: flex; align-items: center; gap: 8px;
+            box-shadow: 0 4px 10px rgba(0,0,0,0.3);
+        }
+        .stat-badge span { font-weight: bold; color: var(--accent); }
+        .stat-badge .online-dot {
+            width: 8px; height: 8px; background: #10b981; border-radius: 50%;
+            box-shadow: 0 0 8px #10b981; animation: blink 1.5s infinite alternate;
+        }
+        @keyframes blink { from { opacity: 1; } to { opacity: 0.3; } }
+
+        .ihsg-container { display: grid; grid-template-columns: 2fr 1fr; gap: 20px; margin-bottom: 35px; }
+        @media (max-width: 768px) { .ihsg-container { grid-template-columns: 1fr; } }
+        
+        .tv-chart-box {
+            background: rgba(15, 23, 42, 0.8); border: 1px solid rgba(56, 189, 248, 0.3);
+            border-radius: 12px; overflow: hidden; height: 350px; box-shadow: 0 10px 30px rgba(0,0,0,0.5);
+        }
+
+        .ihsg-weather {
+            background: rgba(15, 23, 42, 0.8); backdrop-filter: blur(10px);
+            border: 1px solid rgba(56, 189, 248, 0.3); padding: 20px; 
+            border-radius: 12px; box-shadow: 0 10px 30px rgba(0,0,0,0.5);
+            display: flex; flex-direction: column; gap: 15px;
+        }
+        .ihsg-weather-title { font-size: 12px; color: var(--accent); font-weight: 800; letter-spacing: 1px; border-bottom: 1px dashed rgba(56,189,248,0.3); padding-bottom: 8px;}
+        .ihsg-val { font-family: 'JetBrains Mono', monospace; font-size: 28px; font-weight: bold; color: #fff; }
+        .ihsg-desc { font-size: 13px; color: #cbd5e1; line-height: 1.5; background: rgba(3,7,18,0.5); padding: 12px; border-radius: 8px; border: 1px solid #334155;}
+
+        .radar-section { margin-bottom: 35px; }
+        .radar-title { font-size: 16px; font-weight: 800; color: #fff; margin-bottom: 15px; display: flex; align-items: center; gap: 10px; flex-wrap: wrap; }
+        .radar-title span { font-size: 11px; font-weight: normal; color: #34d399; background: rgba(16,185,129,0.1); border: 1px solid rgba(16,185,129,0.3); padding: 4px 8px; border-radius: 6px; }
+        
+        .radar-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(190px, 1fr)); gap: 15px; }
+        .radar-card {
+            background: rgba(3, 7, 18, 0.6); border: 1px solid #334155; padding: 15px; 
+            border-radius: 12px; cursor: pointer; transition: all 0.2s ease;
+            display: flex; flex-direction: column; gap: 8px; position: relative; overflow: hidden;
+        }
+        .radar-card::before { content: ''; position: absolute; top:0; left:0; width: 4px; height: 100%; background: var(--accent); }
+        .radar-card:hover { border-color: var(--accent); background: rgba(15, 23, 42, 0.9); transform: translateY(-3px); box-shadow: 0 8px 20px rgba(56, 189, 248, 0.2); }
+        .rc-head { display: flex; justify-content: space-between; align-items: center; margin-bottom: 5px; }
+        .rc-ticker { font-weight: 800; font-size: 18px; color: #fff; }
+        .rc-score { font-size: 11px; font-weight: bold; background: rgba(56,189,248,0.1); color: var(--accent); padding: 3px 6px; border-radius: 4px; border: 1px solid rgba(56,189,248,0.3); }
+        .rc-price { font-family: 'JetBrains Mono', monospace; font-size: 14px; color: #f8fafc; font-weight: bold; }
+        .rc-change { font-size: 12px; font-weight: bold; }
+        .rc-change.up { color: #34d399; }
+        .rc-change.down { color: #f43f5e; }
+        .rc-reason { font-size: 10px; color: #94a3b8; font-style: italic; background: rgba(0,0,0,0.3); padding: 4px; border-radius: 4px; text-align: center; margin-top: 4px;}
+
+        .skeleton { animation: pulse 1.5s infinite ease-in-out; background: #0f172a !important; border-color: #1e293b !important; }
+        @keyframes pulse { 0% { opacity: 1; } 50% { opacity: 0.5; } 100% { opacity: 1; } }
+
+        .search-box { 
+            background: var(--panel); backdrop-filter: blur(15px); padding: 25px; border-radius: 16px; 
+            border: 1px solid var(--panel-border); box-shadow: 0 20px 40px rgba(0,0,0,0.6); 
+        }
+        input[type="text"] { 
+            width: 100%; padding: 18px 20px; background: rgba(3, 7, 18, 0.8); border: 1px solid #334155; 
+            color: white; font-family: 'JetBrains Mono', monospace; font-size: 18px; text-align: center;
+            border-radius: 10px; transition: all 0.3s ease; text-transform: uppercase; letter-spacing: 2px; margin-bottom: 15px;
+        }
+        input[type="text"]:focus { outline: none; border-color: var(--accent); box-shadow: 0 0 15px var(--accent-glow); }
+        button { 
+            width: 100%; padding: 18px; background: var(--accent-grad); color: #030712; 
+            font-weight: 800; font-family: 'Inter', sans-serif; font-size: 16px; 
+            border: none; border-radius: 10px; cursor: pointer; transition: all 0.3s ease; text-transform: uppercase; 
+        }
+        button:hover { transform: translateY(-2px); box-shadow: 0 8px 25px var(--accent-glow); }
+        
+        .tracker-box { background: #020617; border: 1px solid #3b82f6; padding: 20px; border-radius: 12px; display: none; margin-top: 25px; color: #3b82f6; font-family: 'JetBrains Mono', monospace; }
+        .tracker-log { font-size: 12px; color: #60a5fa; margin-top: 15px; max-height: 200px; overflow-y: auto; }
+        .result-dashboard { display: none; margin-top: 35px; animation: slideUp 0.5s ease-out; }
+        @keyframes slideUp { from { opacity: 0; transform: translateY(20px); } to { opacity: 1; transform: translateY(0); } }
+
+        .header-dash { background: var(--panel); border: 1px solid var(--panel-border); padding: 25px; border-radius: 16px; text-align: center; margin-bottom: 25px; box-shadow: 0 10px 30px rgba(0,0,0,0.5); border-top: 4px solid var(--accent); }
+        .header-dash h2 { margin: 0; font-size: 40px; font-weight: 800; color: #fff; }
+        .grid-dash { display: grid; grid-template-columns: 1fr 1fr; gap: 20px; }
+        @media (max-width: 768px) { .grid-dash { grid-template-columns: 1fr; } }
+        .card { background: var(--panel); border: 1px solid var(--panel-border); padding: 20px; border-radius: 16px; }
+        .card-title { color: var(--accent); font-weight: 800; font-size: 14px; border-bottom: 1px dashed rgba(56, 189, 248, 0.3); padding-bottom: 10px; margin-bottom: 15px; }
+        .stat-row { display: flex; justify-content: space-between; padding: 8px 0; border-bottom: 1px solid rgba(51, 65, 85, 0.5); font-size: 13px; }
+        .stat-val { font-weight: bold; color: #f8fafc; font-family: 'JetBrains Mono', monospace; }
+        
+        .badge { padding: 6px 14px; border-radius: 6px; font-weight: 800; font-size: 14px; color: #fff; display: inline-block;}
+        .b-BUY { background: var(--buy); box-shadow: 0 0 15px var(--buy-glow); }
+        .b-WAIT { background: var(--wait); }
+        .b-SKIP { background: var(--skip); }
+
+        .score-bar-bg { width: 100%; background: #0f172a; height: 10px; border-radius: 5px; margin-top: 10px; }
+        .score-bar-fill { height: 100%; background: var(--accent-grad); transition: width 1s; border-radius: 5px; }
+    </style>
+</head>
+<body>
+
+<div class="container">
+    <h1>GACOR HUNTER V5.0</h1>
+    <p class="subtitle">STRUCTURE • EMA • MACD • FIBO • S&R • RISK/REWARD</p>
+    
+    <div class="user-stats-container">
+        <div class="stat-badge">👥 Total User: <span id="uiTotalUsers">Syncing...</span></div>
+        <div class="stat-badge"><div class="online-dot"></div> Online: <span id="uiOnlineUsers">Syncing...</span></div>
+    </div>
+
+    <div class="ihsg-container">
+        <div class="tv-chart-box" id="tv_chart_container"></div>
+        <div class="ihsg-weather">
+            <div class="ihsg-weather-title">🌍 ALGORITHMIC MARKET WEATHER</div>
+            <div>
+                <div style="font-size: 11px; color: #94a3b8; margin-bottom: 5px;">IHSG LATEST LEVEL</div>
+                <div class="ihsg-val" id="topIhsgLevel">Menganalisa...</div>
+            </div>
+            <div>
+                <div style="font-size: 11px; color: #94a3b8; margin-bottom: 5px;">TREND STATUS (MA20)</div>
+                <div class="ihsg-val" id="topIhsgTrend" style="font-size: 20px;">-</div>
+            </div>
+            <div class="ihsg-desc" id="topIhsgDesc">Memuat data trend IHSG dari server...</div>
+        </div>
+    </div>
+
+    <div class="radar-section">
+        <div class="radar-title">
+            🔥 TOP 10 RADAR HARI INI 
+            <span>⚡ Terfilter dari Data EOD Backend</span>
+            <span id="lastScanBadge" style="background: rgba(56,189,248,0.1); color: var(--accent); border-color: rgba(56,189,248,0.3);">🔄 Syncing Database...</span>
+        </div>
+        <div class="radar-grid" id="top10Grid">
+            <div class="radar-card skeleton" style="min-height: 100px;"></div>
+            <div class="radar-card skeleton" style="min-height: 100px;"></div>
+            <div class="radar-card skeleton" style="min-height: 100px;"></div>
+            <div class="radar-card skeleton" style="min-height: 100px;"></div>
+            <div class="radar-card skeleton" style="min-height: 100px;"></div>
+        </div>
+    </div>
+
+    <div class="search-box">
+        <input type="text" id="tickerInput" placeholder="KODE TICKER (Misal: BBCA.JK)" autocomplete="off">
+        <button id="scanBtn" onclick="startEngine()">JALANKAN ANALISA MENDALAM V4.2</button>
+    </div>
+    
+    <div id="trackerBox" class="tracker-box">
+        <div id="trackerMain" style="font-weight:bold;">> SYSTEM INITIALIZING...</div>
+        <div id="trackerLog" class="tracker-log"></div>
+    </div>
+    
+    <div id="resultBox" class="result-dashboard">
+        <div class="header-dash">
+            <h2 id="outTicker">$TICKER</h2>
+            <div style="font-size: 14px; color: var(--accent); font-weight: bold; margin-top: 8px;" id="outStage">MOMENTUM STAGE: -</div>
+            <div style="margin-top: 15px;"><span id="outStatus" class="badge">N/A</span></div>
+        </div>
+
+        <div class="grid-dash">
+            <div class="card">
+                <div class="card-title">⚙️ STRUCTURED SCORING V5.0 (100)</div>
+                <div style="text-align:center;margin-bottom:20px;">
+                    <div style="font-size:48px;font-weight:800;font-family:'JetBrains Mono';" id="outTotalScore">0</div>
+                    <div class="score-bar-bg"><div id="outScoreBar" class="score-bar-fill" style="width:0%"></div></div>
+                </div>
+                <div class="stat-row"><span>Structure HH/HL/LH/LL (20)</span><span class="stat-val" id="scStructure">0</span></div>
+                <div class="stat-row"><span>EMA 5 / 21 + Trend (15)</span><span class="stat-val" id="scEma">0</span></div>
+                <div class="stat-row"><span>MACD Momentum (10)</span><span class="stat-val" id="scMacd">0</span></div>
+                <div class="stat-row"><span>Fibonacci / Harmonic S&R (10)</span><span class="stat-val" id="scFibo">0</span></div>
+                <div class="stat-row"><span>Classic S&R (10)</span><span class="stat-val" id="scClassic">0</span></div>
+                <div class="stat-row"><span>Dynamic S&R EMA 21/34/99 (10)</span><span class="stat-val" id="scDynamic">0</span></div>
+                <div class="stat-row"><span>Momentum + Volume (15)</span><span class="stat-val" id="scMomentum">0</span></div>
+                <div class="stat-row"><span>Setup + Risk/Reward (10)</span><span class="stat-val" id="scSetup">0</span></div>
+            </div>
+
+            <div class="card">
+                <div class="card-title">🎯 LOGICAL TRADING PLAN</div>
+                <div class="stat-row"><span>Realtime Price</span><span class="stat-val" style="color:var(--accent);font-size:16px;" id="outPrice">0</span></div>
+                <div class="stat-row"><span>Arah Dominan</span><span class="stat-val" id="outDirection">-</span></div>
+                <div class="stat-row"><span>Struktur Swing</span><span class="stat-val" id="outStruct">-</span></div>
+                <div class="stat-row"><span>EMA 5 / EMA 21</span><span class="stat-val" id="outEma">-</span></div>
+                <div class="stat-row"><span>MACD</span><span class="stat-val" id="outMacd">-</span></div>
+                <div class="stat-row"><span>Golden / Death Cross</span><span class="stat-val" id="outCross">-</span></div>
+
+                <div style="background:rgba(3,7,18,.5);padding:10px;border-radius:8px;margin:15px 0;">
+                    <div style="font-size:11px;color:#94a3b8;margin-bottom:5px;">📍 SUPPORT / RESISTANCE MAP</div>
+                    <div class="stat-row" style="border:none;padding:3px 0;"><span>Classic Support</span><span class="stat-val" id="outClassicS">-</span></div>
+                    <div class="stat-row" style="border:none;padding:3px 0;"><span>Classic Resistance</span><span class="stat-val" id="outClassicR">-</span></div>
+                    <div class="stat-row" style="border:none;padding:3px 0;"><span>Dynamic Support</span><span class="stat-val" id="outDynamicS">-</span></div>
+                    <div class="stat-row" style="border:none;padding:3px 0;"><span>Dynamic Resistance</span><span class="stat-val" id="outDynamicR">-</span></div>
+                    <div class="stat-row" style="border:none;padding:3px 0;"><span>Fibo Support / Resistance</span><span class="stat-val" id="outFibo">-</span></div>
+                </div>
+
+                <div style="background:rgba(16,185,129,.1);border:1px solid rgba(16,185,129,.3);padding:10px;border-radius:8px;margin-bottom:10px;">
+                    <div class="stat-row" style="border:none;padding:0;"><span>🛒 STRICT ENTRY ZONE</span><span class="stat-val" style="color:var(--buy)" id="outBuy">-</span></div>
+                    <div style="font-size:10px;color:#94a3b8;margin-top:6px;" id="outEntryLogic">-</div>
+                </div>
+                <div style="background:rgba(245,158,11,.1);border:1px solid rgba(245,158,11,.3);padding:10px;border-radius:8px;margin-bottom:10px;">
+                    <div class="stat-row" style="border:none;padding:0;"><span>⚡ ENTRY TRIGGER</span><span class="stat-val" id="outEntryTrigger">-</span></div>
+                </div>
+                <div style="background:rgba(244,63,94,.1);border:1px solid rgba(244,63,94,.3);padding:10px;border-radius:8px;margin-bottom:15px;">
+                    <div class="stat-row" style="border:none;padding:0;"><span>🛑 INVALIDATION / CUT LOSS</span><span class="stat-val" style="color:var(--skip)" id="outSl">-</span></div>
+                </div>
+                <div class="stat-row"><span>🎯 TP 1</span><span class="stat-val" id="outTp1">-</span></div>
+                <div class="stat-row"><span>🎯 TP 2</span><span class="stat-val" id="outTp2">-</span></div>
+                <div class="stat-row"><span>📐 Risk / Reward</span><span class="stat-val" id="outRR">-</span></div>
+                <div class="stat-row"><span>🧭 Exit Trigger</span><span class="stat-val" id="outExitTrigger">-</span></div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<script type="text/javascript" src="https://s3.tradingview.com/tv.js"></script>
+<script>
+    // =========================================================================
+    // WAJIB DIGANTI: Masukkan URL Web App terbaru kamu di antara tanda kutip di bawah ini!
+    // =========================================================================
+    const GOOGLE_PROXY_URL = "https://script.google.com/macros/s/AKfycbyCFWBRbCFFTisr3yEA8ZrxwLLAwFagur8KFMYrHIBQNHh4sExfvIGWmwNDLDHqZQ8/exec";
+    
+    const sleep = ms => new Promise(r => setTimeout(r, ms));
+    const formatNumber = num => num < 10 ? num.toFixed(2) : Math.round(num).toLocaleString('id-ID');
+
+    function getUserId() {
+        let uid = localStorage.getItem('gacor_user_id');
+        if (!uid) {
+            uid = 'USR_' + Date.now().toString(36) + '_' + Math.random().toString(36).substr(2, 6).toUpperCase();
+            localStorage.setItem('gacor_user_id', uid);
+        }
+        return uid;
+    }
+
+    async function sendHeartbeat() {
+        const uid = getUserId();
+        try {
+            const url = `${GOOGLE_PROXY_URL}?action=heartbeat&userId=${encodeURIComponent(uid)}`;
+            const response = await fetch(url);
+            const data = await response.json();
+            if (data && data.status === "success") {
+                document.getElementById('uiTotalUsers').innerText = data.totalUsers || 0;
+                document.getElementById('uiOnlineUsers').innerText = data.onlineUsers || 0;
+            }
+        } catch (error) {
+            console.error("Gagal menghubungi server tracker:", error);
+        }
+    }
+
+    const average = arr => arr.length ? arr.reduce((a,b)=>a+b,0)/arr.length : 0;
+    const highest = arr => arr.length ? Math.max(...arr) : 0;
+    const lowest = arr => arr.length ? Math.min(...arr) : 0;
+    const calcSMA = (arr,p) => arr.length>=p ? average(arr.slice(-p)) : (arr[arr.length-1]||0);
+
+    const calcEMA = (arr, period) => {
+        if(!arr?.length) return 0;
+        const k=2/(period+1); let ema=arr[0];
+        for(let i=1;i<arr.length;i++) ema=arr[i]*k+ema*(1-k);
+        return ema;
+    };
+    const emaSeries = (arr, period) => {
+        if(!arr?.length) return [];
+        const out=[arr[0]], k=2/(period+1);
+        for(let i=1;i<arr.length;i++) out[i]=arr[i]*k+out[i-1]*(1-k);
+        return out;
+    };
+    const calcRSI = (closes, period) => {
+        if(!closes || closes.length<=period) return 50;
+        let gains=0,losses=0;
+        for(let i=1;i<=period;i++){const d=closes[i]-closes[i-1];if(d>0)gains+=d;else losses+=Math.abs(d);}
+        let avgGain=gains/period, avgLoss=losses/period;
+        for(let i=period+1;i<closes.length;i++){
+            const d=closes[i]-closes[i-1];
+            avgGain=(avgGain*(period-1)+(d>0?d:0))/period;
+            avgLoss=(avgLoss*(period-1)+(d<0?Math.abs(d):0))/period;
+        }
+        if(avgLoss===0)return 100;
+        return 100-(100/(1+avgGain/avgLoss));
+    };
+    const calcMACD = closes => {
+        const e12=emaSeries(closes,12),e26=emaSeries(closes,26);
+        const macd=closes.map((_,i)=>e12[i]-e26[i]),signal=emaSeries(macd,9);
+        return {macd,signal,hist:macd.map((v,i)=>v-signal[i])};
+    };
+    function extractValidData(q){
+        if(!q)return null;
+        const closes=[],highs=[],lows=[],volumes=[];
+        for(let i=0;i<q.close.length;i++){
+            if(q.close[i]!=null&&q.high[i]!=null&&q.low[i]!=null){
+                closes.push(Number(q.close[i]));highs.push(Number(q.high[i]));lows.push(Number(q.low[i]));volumes.push(Number(q.volume[i]||0));
+            }
+        }
+        return {closes,highs,lows,volumes};
+    }
+    async function fetchYahooData(ticker){
+        try{
+            const res=await fetch(`${GOOGLE_PROXY_URL}?ticker=${encodeURIComponent(ticker)}`);
+            if(!res.ok)return null;
+            const data=await res.json();
+            return data?.chart?.result?.[0]?.indicators?.quote?.[0]||null;
+        }catch(e){return null;}
+    }
+    function getPivots(highs,lows,lookback=2){
+        const highPivots=[],lowPivots=[];
+        for(let i=lookback;i<highs.length-lookback;i++){
+            let hi=true,lo=true;
+            for(let j=1;j<=lookback;j++){
+                if(!(highs[i]>highs[i-j]&&highs[i]>=highs[i+j]))hi=false;
+                if(!(lows[i]<lows[i-j]&&lows[i]<=lows[i+j]))lo=false;
+            }
+            if(hi)highPivots.push({index:i,price:highs[i]});
+            if(lo)lowPivots.push({index:i,price:lows[i]});
+        }
+        return {highPivots,lowPivots};
+    }
+    function nearestBelow(values,price){const x=values.filter(v=>Number.isFinite(v)&&v<price);return x.length?Math.max(...x):0;}
+    function nearestAbove(values,price){const x=values.filter(v=>Number.isFinite(v)&&v>price);return x.length?Math.min(...x):0;}
+    function fmtRange(a,b){if(!a||!b)return "-";return `${formatNumber(Math.min(a,b))} - ${formatNumber(Math.max(a,b))}`;}
+    function buildStructure(p){
+        const hs=p.highPivots.slice(-3),ls=p.lowPivots.slice(-3);
+        if(hs.length<2||ls.length<2)return {label:"UNDEFINED",bullish:false,bearish:false};
+        const lh=hs.at(-1).price,ph=hs.at(-2).price,ll=ls.at(-1).price,pl=ls.at(-2).price;
+        if(lh>ph&&ll>pl)return {label:"HH + HL (UPTREND)",bullish:true,bearish:false};
+        if(lh<ph&&ll<pl)return {label:"LH + LL (DOWNTREND)",bullish:false,bearish:true};
+        if(lh>ph&&ll<pl)return {label:"EXPANSION / MIXED",bullish:false,bearish:false};
+        return {label:"RANGE / TRANSITION",bullish:false,bearish:false};
+    }
+    function fibMap(swingLow,swingHigh,bullish){
+        if(!(swingHigh>swingLow))return null;
+        const r=swingHigh-swingLow;
+        if(bullish)return {0:swingHigh,.236:swingHigh-r*.236,.382:swingHigh-r*.382,.5:swingHigh-r*.5,.618:swingHigh-r*.618,.786:swingHigh-r*.786,1:swingLow};
+        return {0:swingLow,.236:swingLow+r*.236,.382:swingLow+r*.382,.5:swingLow+r*.5,.618:swingLow+r*.618,.786:swingLow+r*.786,1:swingHigh};
+    }
+    function buildPlan(price,direction,setup,supports,resistances,atr){
+        const S=supports.filter(x=>x>0&&x<price).sort((a,b)=>b-a)[0]||price-atr;
+        const R=resistances.filter(x=>x>price).sort((a,b)=>a-b)[0]||price+Math.max(atr*2,price*.04);
+        let entryLow=0,entryHigh=0,stop=0,tp1=0,tp2=0,trigger="",logic="";
+        if(direction==="BEARISH"){
+            trigger="NO LONG ENTRY — tunggu reclaim EMA21 + HL baru";
+            logic="Struktur bearish (LH/LL). Engine tidak memaksakan posisi BUY.";
+        }else if(setup==="BREAKOUT"){
+            const breakoutR = resistances.filter(x=>x>0).sort((a,b)=>b-a).find(x=>Math.abs(x-price)/price<.03)||R;
+            entryLow=breakoutR*.995;entryHigh=breakoutR*1.005;
+            stop=Math.min(breakoutR-Math.max(atr*.7,price*.015),S-atr*.25);
+            tp1=R>entryHigh?R:entryHigh+Math.max(atr*2,price*.04);
+            tp2=tp1+Math.max(atr*1.5,price*.03);
+            trigger=`Close > ${formatNumber(breakoutR)} + volume ≥ 1.5x, lalu retest bertahan`;
+            logic=`Entry hanya di area retest level breakout ${formatNumber(breakoutR)}; tidak mengejar harga.`;
+        }else{
+            entryLow=Math.max(S*.995,S+atr*.15);entryHigh=Math.min(S*1.01,price);
+            if(entryLow>entryHigh){entryLow=Math.max(S*.995,price*.985);entryHigh=price;}
+            stop=S-Math.max(atr*.7,price*.015);
+            tp1=R>entryHigh?R:entryHigh+Math.max(atr*2,price*.04);
+            tp2=tp1+Math.max(atr*1.5,price*.03);
+            trigger=`Pantulan ${formatNumber(S)} + candle bullish + close kembali di atas EMA21`;
+            logic=`Entry ditempatkan dekat support terdekat (${formatNumber(S)}), bukan range arbitrer yang menjauh dari harga.`;
+        }
+        const mid=entryLow&&entryHigh?(entryLow+entryHigh)/2:0, rr=mid&&stop&&tp1>mid?(tp1-mid)/(mid-stop):0;
+        return {entryLow,entryHigh,stop,tp1,tp2,rr,trigger,logic};
+    }
+    
+    window.onload = async function() {
+        sendHeartbeat();
+        setInterval(sendHeartbeat, 60000); 
+
+        new TradingView.widget({
+            "autosize": true,
+            "symbol": "IDX:COMPOSITE",
+            "interval": "D",
+            "timezone": "Asia/Jakarta",
+            "theme": "dark",
+            "style": "1",
+            "locale": "id",
+            "enable_publishing": false,
+            "hide_top_toolbar": true,
+            "hide_legend": true,
+            "save_image": false,
+            "container_id": "tv_chart_container"
+        });
+
+        try {
+            const outReq = await fetch(`${GOOGLE_PROXY_URL}?action=getMarketOutlook`);
+            const outRes = await outReq.json();
+            if (outRes.status === 'success' && outRes.data) {
+                document.getElementById('topIhsgLevel').innerText = formatNumber(outRes.data.level);
+                let trendEl = document.getElementById('topIhsgTrend');
+                trendEl.innerText = `${outRes.data.trend} (MA20: ${outRes.data.ma20})`;
+                if (outRes.data.trend === "BULLISH") trendEl.style.color = '#34d399'; 
+                else if (outRes.data.trend === "BEARISH") trendEl.style.color = '#f43f5e';
+                else trendEl.style.color = '#f59e0b'; 
+                document.getElementById('topIhsgDesc').innerText = outRes.data.summary;
+            }
+        } catch(e) {
+            console.error("Gagal load Market Outlook", e);
+            document.getElementById('topIhsgDesc').innerText = "Gagal memuat data dari server.";
+        }
+
+        const grid = document.getElementById("top10Grid");
+        const badgeScan = document.getElementById("lastScanBadge");
+        
+        try {
+            const req = await fetch(`${GOOGLE_PROXY_URL}?action=getTop10`);
+            const top10Res = await req.json();
+
+            if(top10Res.status === 'success' && top10Res.data && top10Res.data.length > 0) {
+                badgeScan.innerText = `🔄 Last Update: ${top10Res.lastUpdate}`;
+                grid.innerHTML = top10Res.data.map((item, idx) => `
+                    <div class="radar-card skeleton" id="card-${idx}" style="min-height: 100px;"></div>
+                `).join('');
+
+                top10Res.data.forEach(async (item, idx) => {
+                    const cardEl = document.getElementById(`card-${idx}`);
+                    try {
+                        const quote = await fetchYahooData(item.ticker);
+                        const data = extractValidData(quote);
+                        const curr = data.closes[data.closes.length - 1];
+                        const prev = data.closes[data.closes.length - 2];
+                        const changePct = ((curr - prev) / prev) * 100;
+                        
+                        let chgClass = changePct >= 0 ? "up" : "down";
+                        let chgSign = changePct >= 0 ? "+" : "";
+                        let setupColor = item.setup === "BREAKOUT" ? "#f59e0b" : "#38bdf8";
+
+                        cardEl.classList.remove("skeleton");
+                        cardEl.setAttribute("onclick", `scanFromRadar('${item.ticker}')`);
+                        cardEl.innerHTML = `
+                            <div class="rc-head">
+                                <div class="rc-ticker">${item.ticker.replace('.JK', '')}</div>
+                                <div class="rc-score">⭐ Skor ${item.score}</div>
+                            </div>
+                            <div style="display: flex; justify-content: space-between; align-items: baseline; margin-top: 2px;">
+                                <div class="rc-price">Rp ${formatNumber(curr)}</div>
+                                <div class="rc-change ${chgClass}">${chgSign}${changePct.toFixed(2)}%</div>
+                            </div>
+                            <div class="rc-reason" style="color: ${setupColor};">🎯 ${item.setup}</div>
+                        `;
+                    } catch (e) {
+                        cardEl.classList.remove("skeleton");
+                        cardEl.innerHTML = `<div class="rc-ticker">${item.ticker}</div><div class="rc-reason" style="color:red;">Error Live Data</div>`;
+                    }
+                });
+            } else {
+                badgeScan.innerText = `⚠️ Data Kosong`;
+                grid.innerHTML = `<div style="grid-column: 1 / -1; padding: 20px; text-align: center; border: 1px dashed #334155; border-radius: 12px; color: #94a3b8;">Belum ada hasil scan EOD.</div>`;
+            }
+        } catch(err) {
+            badgeScan.innerText = `❌ Error API`;
+            grid.innerHTML = `<div style="grid-column: 1 / -1; padding: 20px; text-align: center; border: 1px dashed #f43f5e; border-radius: 12px; color: #f43f5e;">Koneksi ke Apps Script gagal.</div>`;
+        }
+    };
+
+    function scanFromRadar(ticker) {
+        document.getElementById("tickerInput").value = ticker;
+        startEngine();
+    }
+
+    function updateLog(msg) {
+        let logDiv = document.getElementById("trackerLog");
+        logDiv.innerHTML += `<div>[${new Date().toLocaleTimeString('id-ID')}] ${msg}</div>`;
+        logDiv.scrollTop = logDiv.scrollHeight;
+    }
+
+    async function startEngine() {
+        let ticker = document.getElementById("tickerInput").value.trim().toUpperCase();
+        if (!ticker) return;
+        if (!ticker.includes('.')) ticker += ".JK"; 
+
+        document.getElementById("scanBtn").disabled = true;
+        document.getElementById("resultBox").style.display = "none";
+        document.getElementById("trackerBox").style.display = "block";
+        document.getElementById("trackerLog").innerHTML = "";
+        
+        try {
+            updateLog(`Memindai $${ticker} dengan Engine V4.2...`);
+            document.getElementById("trackerBox").scrollIntoView({ behavior: 'smooth', block: 'center' });
+
+            const stockQuote = await fetchYahooData(ticker);
+            if (!stockQuote) throw new Error(`Gagal memuat data ${ticker}. Pastikan URL Web App sudah benar.`);
+            
+            const stockData = extractValidData(stockQuote);
+            const closes = stockData.closes;
+            const volumes = stockData.volumes;
+            const highs = stockData.highs;
+            const lows = stockData.lows;
+
+            if (closes.length < 120) throw new Error("Data historis tidak mencukupi (minimal 120 hari).");
+
+            const currClose=closes.at(-1), prevClose=closes.at(-2);
+            const return1d=prevClose?((currClose-prevClose)/prevClose)*100:0;
+            const close5d=closes.at(-6), return5d=close5d?((currClose-close5d)/close5d)*100:0;
+            const e5=emaSeries(closes,5),e21=emaSeries(closes,21),e34=emaSeries(closes,34),e99=emaSeries(closes,99);
+            const ema5=e5.at(-1),ema21=e21.at(-1),ema34=e34.at(-1),ema99=e99.at(-1);
+            const macd=calcMACD(closes),macdLine=macd.macd.at(-1),signalLine=macd.signal.at(-1),macdHist=macd.hist.at(-1);
+            const prevE5=e5.at(-2),prevE21=e21.at(-2);
+            const goldenCross=prevE5<=prevE21&&ema5>ema21, deathCross=prevE5>=prevE21&&ema5<ema21;
+            const rsi=calcRSI(closes,14);
+
+            const currVol=volumes.at(-1),avgVol20=average(volumes.slice(-21,-1)),volRatio=avgVol20?currVol/avgVol20:0;
+
+            const trs=[]; for(let i=Math.max(1,closes.length-20);i<closes.length;i++)
+                trs.push(Math.max(highs[i]-lows[i],Math.abs(highs[i]-closes[i-1]),Math.abs(lows[i]-closes[i-1])));
+            const atr=average(trs)||currClose*.02;
+
+            const piv=getPivots(highs,lows,2),structure=buildStructure(piv);
+            const recentH=piv.highPivots.slice(-10).map(x=>x.price),recentL=piv.lowPivots.slice(-10).map(x=>x.price);
+            const classicS=nearestBelow(recentL,currClose)||lowest(lows.slice(-20));
+            const classicR=nearestAbove(recentH,currClose)||highest(highs.slice(-20));
+
+            const win=Math.min(80,closes.length),startIdx=closes.length-win;
+            let hiI=startIdx,loI=startIdx;
+            for(let i=startIdx;i<closes.length;i++){if(highs[i]>highs[hiI])hiI=i;if(lows[i]<lows[loI])loI=i;}
+            const swingHigh=highs[hiI],swingLow=lows[loI],fib=fibMap(swingLow,swingHigh,structure.bullish||currClose>ema21);
+            const fibS=fib?nearestBelow(Object.values(fib),currClose):0, fibR=fib?nearestAbove(Object.values(fib),currClose):0;
+
+            const dynS=nearestBelow([ema21,ema34,ema99],currClose)||Math.min(ema21,ema34,ema99);
+            const dynR=nearestAbove([ema21,ema34,ema99],currClose)||Math.max(ema21,ema34,ema99);
+
+            const emaBull=ema5>ema21&&ema21>ema34, emaBear=ema5<ema21&&ema21<ema34;
+            let direction="SIDEWAYS";
+            if(structure.bullish&&emaBull&&currClose>ema21&&macdLine>signalLine)direction="BULLISH";
+            else if(structure.bearish&&emaBear&&currClose<ema21&&macdLine<signalLine)direction="BEARISH";
+            else if(currClose>ema21&&ema5>ema21&&macdLine>signalLine)direction="BULLISH";
+            else if(currClose<ema21&&ema5<ema21&&macdLine<signalLine)direction="BEARISH";
+
+            let setup="RANGE / WAIT";
+            if(direction==="BULLISH"&&classicR&&currClose>=classicR*.995&&volRatio>=1.5)setup="BREAKOUT";
+            else if(direction==="BULLISH"&&ema5>ema21&&currClose<=ema21*1.025&&currClose>=dynS*.985)setup="PULLBACK TO DYNAMIC SUPPORT";
+            else if(direction==="BULLISH"&&structure.bullish)setup="TREND CONTINUATION";
+            else if(direction==="BEARISH")setup="DOWNTREND / NO LONG";
+
+            let scStructure=structure.bullish?20:structure.bearish?0:structure.label==="EXPANSION / MIXED"?10:7;
+            let scEma=(ema5>ema21?6:0)+(ema21>ema34?4:0)+(ema34>ema99?3:0)+(currClose>ema21?2:0);
+            let scMacd=(macdLine>signalLine?5:0)+(macdLine>0?3:0)+(macdHist>0?2:0);
+            let scFibo=fibS&&currClose>fibS?(Math.abs(currClose-fibS)/currClose<=.03?10:7):3;
+            const dS=classicS?Math.abs(currClose-classicS)/currClose:1,dR=classicR?Math.abs(classicR-currClose)/currClose:1;
+            let scClassic=Math.min(10,(dS<=.03?7:4)+((dR<=.03&&volRatio>=1.5)?3:0));
+            let scDynamic=(currClose>ema21?4:0)+(ema21>ema34?3:0)+(currClose>ema99?3:0);
+            let scMomentum=(rsi>=55&&rsi<=70?6:rsi>50?3:0)+(return5d>0?3:0)+(volRatio>=2?6:volRatio>=1.5?4:volRatio>=1.2?2:0);
+            let scSetup=setup==="BREAKOUT"?8:setup==="PULLBACK TO DYNAMIC SUPPORT"?7:setup==="TREND CONTINUATION"?6:direction==="SIDEWAYS"?4:0;
+
+            const plan=buildPlan(currClose,direction,setup,[classicS,dynS,fibS,ema21,ema34],[classicR,dynR,fibR],atr);
+            if(plan.rr>=2)scSetup=Math.min(10,scSetup+2); else if(plan.rr>=1.5)scSetup=Math.min(10,scSetup+1);
+            else if(direction==="BULLISH"&&plan.rr<1.2)scSetup=Math.max(0,scSetup-2);
+
+            const totalScore=Math.min(100,scStructure+scEma+scMacd+scFibo+scClassic+scDynamic+scMomentum+scSetup);
+            const finalStatus=direction==="BEARISH"?"SKIP":(totalScore>=75&&(plan.rr>=1.5||setup==="BREAKOUT")?"BUY":totalScore>=60?"WAIT":"SKIP");
+            const crossLabel=goldenCross?"GOLDEN CROSS":deathCross?"DEATH CROSS":(ema5>ema21?"BULLISH ALIGNMENT":"BEARISH ALIGNMENT");
+            const macdLabel=`${macdLine>=signalLine?"BULLISH":"BEARISH"} • Hist ${macdHist>=0?"+":""}${macdHist.toFixed(2)}`;
+
+            updateLog("Selesai mengkalkulasi. Render panel Tactical Trading Plan...");
+            await sleep(300);
+
+            document.getElementById("trackerBox").style.display = "none";
+            document.getElementById("scanBtn").disabled = false;
+            document.getElementById("resultBox").style.display = "block";
+
+            document.getElementById("outTicker").innerText = `$${ticker}`;
+            document.getElementById("outStage").innerText = `STAGE: ${setup}`;
+            
+            let stBadge = document.getElementById("outStatus");
+            stBadge.innerText = finalStatus;
+            stBadge.className = "badge " + (finalStatus === "BUY" ? "b-BUY" : (finalStatus === "WAIT" ? "b-WAIT" : "b-SKIP"));
+
+            let outTotalScore = document.getElementById("outTotalScore");
+            outTotalScore.innerText = totalScore;
+            let color = totalScore >= 75 ? 'var(--buy)' : (totalScore >= 65 ? 'var(--wait)' : 'var(--skip)');
+            outTotalScore.style.color = color;
+            document.getElementById("outScoreBar").style.width = `${totalScore}%`;
+            document.getElementById("outScoreBar").style.background = color;
+            
+            document.getElementById("scStructure").innerText=scStructure;
+            document.getElementById("scEma").innerText=scEma;
+            document.getElementById("scMacd").innerText=scMacd;
+            document.getElementById("scFibo").innerText=scFibo;
+            document.getElementById("scClassic").innerText=scClassic;
+            document.getElementById("scDynamic").innerText=scDynamic;
+            document.getElementById("scMomentum").innerText=scMomentum;
+            document.getElementById("scSetup").innerText=scSetup;
+
+            document.getElementById("outPrice").innerText=formatNumber(currClose);
+            document.getElementById("outDirection").innerText=direction;
+            document.getElementById("outDirection").style.color=direction==="BULLISH"?"var(--buy)":direction==="BEARISH"?"var(--skip)":"var(--wait)";
+            document.getElementById("outStruct").innerText=structure.label;
+            document.getElementById("outEma").innerText=`${formatNumber(ema5)} / ${formatNumber(ema21)}`;
+            document.getElementById("outMacd").innerText=macdLabel;
+            document.getElementById("outCross").innerText=crossLabel;
+
+            document.getElementById("outClassicS").innerText=formatNumber(classicS);
+            document.getElementById("outClassicR").innerText=formatNumber(classicR);
+            document.getElementById("outDynamicS").innerText=formatNumber(dynS);
+            document.getElementById("outDynamicR").innerText=formatNumber(dynR);
+            document.getElementById("outFibo").innerText=`${formatNumber(fibS)} / ${formatNumber(fibR)}`;
+
+            document.getElementById("outBuy").innerText=plan.entryLow?fmtRange(plan.entryLow,plan.entryHigh):"NO LONG ENTRY";
+            document.getElementById("outEntryLogic").innerText=plan.logic;
+            document.getElementById("outEntryTrigger").innerText=plan.trigger;
+            document.getElementById("outSl").innerText=plan.stop?formatNumber(plan.stop):"STRUCTURE INVALIDATION";
+            document.getElementById("outTp1").innerText=plan.tp1?formatNumber(plan.tp1):"-";
+            document.getElementById("outTp2").innerText=plan.tp2?formatNumber(plan.tp2):"-";
+            document.getElementById("outRR").innerText=plan.rr?`${plan.rr.toFixed(2)}R`:"-";
+            document.getElementById("outExitTrigger").innerText=direction==="BULLISH"
+                ?"TP1/TP2 bertahap; full exit bila close < EMA21 dan HL terakhir gagal"
+                :"Belum ada long entry; tunggu reclaim EMA21 + HL baru";
+
+            document.getElementById("outStage").innerText=`STAGE: ${setup} • RSI ${rsi.toFixed(1)} • VOL ${volRatio.toFixed(2)}x`;
+            document.getElementById("resultBox").scrollIntoView({ behavior: 'smooth', block: 'start' });
+
+        } catch (error) {
+            document.getElementById("trackerBox").style.display = "none";
+            document.getElementById("scanBtn").disabled = false;
+            alert(error.message);
+        }
+    }
+</script>
+
+</body>
+</html>
